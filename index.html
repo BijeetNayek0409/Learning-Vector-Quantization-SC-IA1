@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learning Vector Quantization (LVQ) — Interactive Visualization</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><polygon points='16,3 29,16 16,29 3,16' fill='%232563eb'/></svg>">
+<link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+
+<!-- ====================== HEADER ====================== -->
+<header class="app-header">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <div>
+      <h1>Learning Vector Quantization <span class="brand-tag">LVQ</span></h1>
+      <p>Interactive Visualization of Prototype-Based Classification</p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span class="kbd-hint hide-in-presentation">
+      <kbd>Space</kbd> play · <kbd>→</kbd> next · <kbd>←</kbd> back · <kbd>R</kbd> reset
+    </span>
+    <div class="team-box">
+      <span class="team-title">Submitted by</span>
+      <span class="team-name">Bijeet</span><span class="team-id">16014224081</span>
+      <span class="team-name">Vini</span><span class="team-id">16014224085</span>
+    </div>
+    <button id="btn-theme" class="btn btn-ghost" type="button" title="Switch between dark and light theme">
+      <span id="theme-icon">🌙</span> Theme
+    </button>
+    <button id="btn-presentation" class="btn btn-ghost" type="button" title="Hide side panels and enlarge the plot for classroom demos">
+      Presentation Mode
+    </button>
+  </div>
+</header>
+
+<!-- ====================== TABS ====================== -->
+<nav class="tab-bar hide-in-presentation" role="tablist">
+  <button class="tab is-active" data-tab="simulation" role="tab">Simulation</button>
+  <button class="tab" data-tab="theory" role="tab">Learn LVQ</button>
+  <button class="tab" data-tab="formulas" role="tab">Formulas &amp; Algorithm Flow</button>
+  <button class="tab" data-tab="viva" role="tab">Viva Questions</button>
+</nav>
+
+<main>
+
+<!-- ====================== TAB 1: SIMULATION ====================== -->
+<section class="tab-panel is-active" data-panel="simulation">
+  <div class="sim-grid">
+
+    <!-- ---------- LEFT: CONTROLS ---------- -->
+    <aside class="panel controls-panel hide-in-presentation">
+      <h2 class="panel-title">Experiment Controls</h2>
+
+      <div class="control-group">
+        <h3>Dataset</h3>
+
+        <label class="field">
+          <span class="field-label">Dataset type
+            <i class="help" title="Shape of the data. Rings are not linearly separable.">?</i>
+          </span>
+          <select id="select-dataset">
+            <option value="separated">Separated clusters</option>
+            <option value="overlapping">Overlapping clusters</option>
+            <option value="rings">Concentric rings (non-linear)</option>
+            <option value="custom">Custom — draw your own</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Number of classes <output id="out-classes">2</output></span>
+          <input id="input-classes" type="range" min="2" max="4" step="1" value="2">
+        </label>
+
+        <label class="field">
+          <span class="field-label">Training points <output id="out-points">40</output></span>
+          <input id="input-points" type="range" min="10" max="150" step="2" value="40">
+        </label>
+
+        <label class="field">
+          <span class="field-label">Random seed
+            <i class="help" title="Same seed = same dataset and same starting prototypes.">?</i>
+          </span>
+          <span class="field-row">
+            <input id="input-seed" type="number" min="1" max="99999" step="1" value="14">
+            <button id="btn-seed" class="btn btn-sm" type="button">Shuffle</button>
+          </span>
+        </label>
+      </div>
+
+      <div class="control-group">
+        <h3>Prototypes</h3>
+        <label class="field">
+          <span class="field-label">Number of prototypes <output id="out-prototypes">4</output></span>
+          <input id="input-prototypes" type="range" min="2" max="10" step="1" value="4">
+          <span class="field-hint" id="prototype-hint">Split evenly between classes.</span>
+        </label>
+        <button id="btn-init" class="btn btn-primary btn-block" type="button">Initialize Prototypes</button>
+      </div>
+
+      <div class="control-group">
+        <h3>Training Parameters</h3>
+
+        <label class="field">
+          <span class="field-label">Learning rate α <output id="out-lr">0.10</output></span>
+          <input id="input-lr" type="range" min="0.01" max="0.5" step="0.01" value="0.1">
+        </label>
+
+        <label class="field checkbox">
+          <input id="input-decay" type="checkbox" checked>
+          <span>Learning-rate decay
+            <i class="help" title="α(epoch) = α₀ × (1 − epoch / total epochs)">?</i>
+          </span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Epochs <output id="out-epochs">15</output></span>
+          <input id="input-epochs" type="range" min="1" max="100" step="1" value="15">
+        </label>
+
+        <label class="field">
+          <span class="field-label">Animation speed <output id="out-speed">5</output></span>
+          <input id="input-speed" type="range" min="1" max="10" step="1" value="5">
+        </label>
+
+        <p class="hint-box" id="experiment-hint"></p>
+      </div>
+
+      <div class="control-group">
+        <h3>Display</h3>
+        <label class="field checkbox">
+          <input id="input-regions" type="checkbox" checked>
+          <span>Decision regions</span>
+        </label>
+        <label class="field checkbox">
+          <input id="input-test-points" type="checkbox" checked>
+          <span>Test points (✗ = misclassified)</span>
+        </label>
+        <span class="field-label">Compare</span>
+        <div class="segmented" id="view-toggle">
+          <button class="seg is-active" data-view="live" type="button">Live</button>
+          <button class="seg" data-view="before" type="button">Before</button>
+          <button class="seg" data-view="after" type="button">After</button>
+        </div>
+        <button id="btn-clear-queries" class="btn btn-sm btn-block" type="button">Clear query points</button>
+      </div>
+    </aside>
+
+    <!-- ---------- CENTRE: VISUALIZATION ---------- -->
+    <section class="panel viz-panel">
+      <div class="viz-toolbar">
+        <div class="btn-row">
+          <button id="btn-reset" class="btn" type="button" title="Return the prototypes to their starting positions (R)">Reset</button>
+          <button id="btn-prev" class="btn" type="button" title="Go back one step (←)">‹ Previous</button>
+          <button id="btn-next" class="btn btn-primary" type="button" title="Advance one step (→)">Next Step ›</button>
+          <button id="btn-play" class="btn btn-accent" type="button" title="Run steps automatically (Space)">▶ Play</button>
+          <button id="btn-epoch" class="btn" type="button" title="Finish the current epoch instantly">Train 1 Epoch</button>
+          <button id="btn-train-all" class="btn" type="button" title="Run every remaining epoch instantly">Train All</button>
+        </div>
+        <div class="mode-row">
+          <span class="mode-label">Canvas click:</span>
+          <div class="segmented" id="click-mode">
+            <button class="seg is-active" data-mode="classify" type="button">Classify point</button>
+            <button class="seg" data-mode="add" type="button">Add training point</button>
+          </div>
+          <div class="class-picker" id="class-picker" hidden></div>
+        </div>
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas id="main-canvas"></canvas>
+      </div>
+
+      <div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
+
+      <div class="legend">
+        <span class="legend-item"><span class="lg-dot"></span>Training point</span>
+        <span class="legend-item"><span class="lg-square"></span>Test point</span>
+        <span class="legend-item"><span class="lg-diamond"></span>Prototype (reference vector)</span>
+        <span class="legend-item"><span class="lg-cross">✗</span>Misclassified test point</span>
+        <span class="legend-sep"></span>
+        <span id="legend-classes" class="legend-classes"></span>
+      </div>
+    </section>
+
+    <!-- ---------- RIGHT: LIVE INFORMATION ---------- -->
+    <aside class="panel info-panel">
+      <div class="card step-card">
+        <div class="card-head">
+          <h3 id="step-title">Ready</h3>
+          <span id="step-badge" class="step-badge">IDLE</span>
+        </div>
+        <div id="step-body" class="card-body"></div>
+      </div>
+
+      <div class="card hide-in-presentation">
+        <div class="card-head"><h3>Distances</h3></div>
+        <div id="distance-list" class="card-body"></div>
+      </div>
+
+      <div class="card hide-in-presentation">
+        <div class="card-head"><h3>Classify a point</h3></div>
+        <div id="query-result" class="card-body"></div>
+      </div>
+
+      <div class="card hide-in-presentation">
+        <div class="card-head"><h3>Metrics</h3></div>
+        <div class="card-body">
+          <div class="metric-row"><span>Epoch</span><b id="stat-epoch">0 / 15</b></div>
+          <div class="metric-row"><span>Step in epoch</span><b id="stat-step">0 / 40</b></div>
+          <div class="metric-row"><span>Phase</span><b id="stat-phase">Not started</b></div>
+          <div class="metric-row"><span>Learning rate</span><b id="stat-lr">0.1000</b></div>
+          <div class="metric-row"><span>Prototypes</span><b id="stat-prototypes">4</b></div>
+          <div class="metric-row"><span>Train accuracy</span><b id="stat-train-acc">0.0%</b></div>
+          <div class="metric-row"><span>Test accuracy</span><b id="stat-test-acc">0.0%</b></div>
+          <div class="metric-row"><span>Test right / wrong</span>
+            <b><span id="stat-correct">0</span> / <span id="stat-incorrect">0</span></b></div>
+          <div class="metric-row"><span>Avg move this epoch</span><b id="stat-movement">0.0000</b></div>
+          <div class="metric-row"><span>Winner</span><b id="stat-winner">—</b></div>
+          <div class="metric-row"><span>Accuracy before → now</span>
+            <b><span id="compare-before">0.0%</span> → <span id="compare-after">0.0%</span>
+              <span id="compare-delta" class="compare-delta"></span></b></div>
+        </div>
+      </div>
+
+      <div class="card hide-in-presentation">
+        <div class="card-head"><h3>Charts</h3></div>
+        <div class="card-body">
+          <canvas id="chart-accuracy" class="mini-chart"></canvas>
+          <canvas id="chart-movement" class="mini-chart"></canvas>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ====================== TAB 2: LEARN LVQ ====================== -->
+<section class="tab-panel" data-panel="theory">
+  <div class="content-grid">
+    <div class="panel prose">
+      <h2 class="panel-title">Learn LVQ</h2>
+
+      <details open>
+        <summary>What is LVQ?</summary>
+        <p>LVQ is a classification algorithm. It does not keep the training data. Each class gets a few
+        points called prototypes, and training moves them into good positions. To classify anything,
+        you find the closest prototype and use its label.</p>
+      </details>
+
+      <details>
+        <summary>What is a prototype / reference vector?</summary>
+        <p>A prototype is a point in the same space as the data, with a class label attached to it. In this
+        app they are the big diamonds. Training changes where a prototype sits. It never changes which
+        class it belongs to.</p>
+      </details>
+
+      <details>
+        <summary>Why is it supervised learning?</summary>
+        <p>Because it needs the labels. The label on the training sample is what tells the algorithm to
+        pull the winning prototype closer or push it away. K-means never sees labels, so it cannot make
+        that decision.</p>
+      </details>
+
+      <details>
+        <summary>How does LVQ classify a point?</summary>
+        <p>Measure the distance from the point to every prototype, take the smallest, and use that
+        prototype's label. The winner is called the Best Matching Unit (BMU). Because the rule is simply
+        "nearest prototype", the decision regions come out with straight edges. They are Voronoi regions.</p>
+      </details>
+
+      <details>
+        <summary>What happens when the winner is right, or wrong?</summary>
+        <p>Right label: the prototype already represents this area well, so move it closer to the sample.</p>
+        <p>Wrong label: the prototype is sitting inside another class's territory, so push it away. The
+        boundary shifts as a result. Those two cases are the whole training rule.</p>
+      </details>
+
+      <details>
+        <summary>What do the learning rate and epochs do?</summary>
+        <p>α sets the step size. At α = 0.1 the prototype covers 10% of the gap to the sample in one
+        update. A large α learns quickly but jumps around; a small α is steadier but slow.</p>
+        <p>One epoch is one pass over all the training samples. More epochs usually give the prototypes
+        time to settle. If decay is on, α shrinks each epoch, so early passes do the rough work and later
+        ones only fine-tune.</p>
+      </details>
+
+      <details>
+        <summary>Advantages, limitations, applications</summary>
+        <p>Advantages: the model is tiny, just a few prototypes. Prediction is fast, and you can point at
+        the exact prototype that made a decision. Extra classes cost nothing special.</p>
+        <p>Limitations: results depend on where the prototypes start and how many you use. Features have
+        to be on similar scales, since everything is based on distance. Heavily overlapping classes are
+        hard, and there is no guarantee of reaching the best possible boundary.</p>
+        <p>Applications: character and pattern recognition, medical signal and image classification, fault
+        detection in machines, speech and sensor data. Generally, anywhere a small explainable classifier
+        is worth more than a large one.</p>
+      </details>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">One update, drawn out</h2>
+      <svg class="concept-svg" viewBox="0 0 360 250" role="img" aria-label="Diagram of an LVQ prototype update">
+        <rect x="0" y="0" width="360" height="250" rx="6" class="svg-bg"/>
+        <g class="svg-dots-a">
+          <circle cx="70" cy="80" r="5"/><circle cx="98" cy="62" r="5"/><circle cx="55" cy="112" r="5"/>
+          <circle cx="92" cy="104" r="5"/><circle cx="120" cy="88" r="5"/>
+        </g>
+        <g class="svg-dots-b">
+          <circle cx="268" cy="150" r="5"/><circle cx="292" cy="126" r="5"/><circle cx="248" cy="182" r="5"/>
+          <circle cx="286" cy="176" r="5"/><circle cx="312" cy="152" r="5"/>
+        </g>
+        <line x1="175" y1="118" x2="96" y2="94" class="svg-link-win"/>
+        <line x1="175" y1="118" x2="262" y2="158" class="svg-link"/>
+        <polygon points="96,80 110,94 96,108 82,94" class="svg-proto-a"/>
+        <polygon points="262,144 276,158 262,172 248,158" class="svg-proto-b"/>
+        <circle cx="175" cy="118" r="7" class="svg-input"/>
+        <path d="M110 100 L140 110" class="svg-arrow"/>
+        <polygon points="146,112 134,106 135,116" class="svg-arrowhead"/>
+        <text x="96" y="70" class="svg-label">P1 · Class A</text>
+        <text x="262" y="134" class="svg-label">P2 · Class B</text>
+        <text x="200" y="106" class="svg-label" style="text-anchor:start">input x (Class A)</text>
+        <text x="120" y="132" class="svg-label-ok">same class → move toward</text>
+      </svg>
+      <p class="caption">P1 is nearest, so P1 wins. Its label matches the input, so P1 moves toward the
+      input by a fraction α of the gap. If P2 had won instead, it would have been pushed the other way.
+      Open the Formulas &amp; Algorithm Flow tab to watch this happen live.</p>
+
+      <h3 class="sub-title">Training loop</h3>
+      <ol class="steps-list">
+        <li>Place the prototypes, one or more per class.</li>
+        <li>Take the next labelled sample <code>x</code>.</li>
+        <li>Find the distance from <code>x</code> to every prototype.</li>
+        <li>The nearest one wins.</li>
+        <li>Same label: move it toward <code>x</code>. Different label: move it away.</li>
+        <li>Repeat for every sample. That is one epoch.</li>
+        <li>Shrink α and run the next epoch.</li>
+        <li>When training ends, classify new points by nearest prototype.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== TAB 3: FORMULAS & FLOW ====================== -->
+<section class="tab-panel" data-panel="formulas">
+  <div class="content-grid">
+    <div class="panel">
+      <h2 class="panel-title">Formulas <span class="panel-note">highlighted live while you step through training</span></h2>
+
+      <div class="formula-card" data-formula="distance">
+        <h3>1 · Euclidean distance</h3>
+        <p class="formula">d(x, w<sub>i</sub>) = √( Σ<sub>j</sub> ( x<sub>j</sub> − w<sub>ij</sub> )² )</p>
+        <p class="formula-note">In 2D: d = √((x₁ − w₁)² + (x₂ − w₂)²). The winner is the prototype with the
+        smallest d — the Best Matching Unit.</p>
+      </div>
+
+      <div class="formula-card is-toward" data-formula="toward">
+        <h3>2 · Winner has the SAME class → move toward</h3>
+        <p class="formula">w<sub>new</sub> = w<sub>old</sub> + α ( x − w<sub>old</sub> )</p>
+        <p class="formula-note">The prototype takes a step of size α along the line pointing at the input.</p>
+      </div>
+
+      <div class="formula-card is-away" data-formula="away">
+        <h3>3 · Winner has a DIFFERENT class → move away</h3>
+        <p class="formula">w<sub>new</sub> = w<sub>old</sub> − α ( x − w<sub>old</sub> )</p>
+        <p class="formula-note">Same step size, opposite direction: the intruding prototype retreats.</p>
+      </div>
+
+      <div class="formula-card" data-formula="decay">
+        <h3>4 · Learning-rate decay (optional)</h3>
+        <p class="formula">α(t) = α<sub>0</sub> ( 1 − t / T )</p>
+        <p class="formula-note">t = current epoch, T = total epochs.</p>
+      </div>
+
+      <div class="var-legend">
+        <h3>What each symbol means</h3>
+        <dl>
+          <dt>x</dt><dd>input vector — one labelled training sample, here a 2D point</dd>
+          <dt>w<sub>i</sub></dt><dd>prototype (reference vector) i, with its own fixed class label</dd>
+          <dt>α</dt><dd>learning rate, 0 &lt; α &lt; 1 — the fraction of the gap covered by one update</dd>
+          <dt>d</dt><dd>Euclidean distance between the input and a prototype</dd>
+          <dt>t, T</dt><dd>current epoch and total number of epochs</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">Algorithm flow <span class="panel-note">the active box follows the simulation</span></h2>
+      <div class="flow">
+        <div class="flow-box" data-flow="input">Input data<br><small>present one labelled sample x</small></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box" data-flow="distance">Calculate distance<br><small>d(x, wᵢ) for every prototype</small></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box" data-flow="winner">Find winning prototype<br><small>BMU = argmin d</small></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box flow-decision" data-flow="compare">Compare class labels<br><small>is class(w) = class(x)?</small></div>
+        <div class="flow-split"><span>YES ↙</span><span>↘ NO</span></div>
+        <div class="flow-branch">
+          <div class="flow-box flow-yes" data-flow="toward">Move TOWARD<br><small>w + α(x − w)</small></div>
+          <div class="flow-box flow-no" data-flow="away">Move AWAY<br><small>w − α(x − w)</small></div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box" data-flow="update">Update prototype<br><small>only the winner moves</small></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box" data-flow="next-input">Next input</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box" data-flow="next-epoch">Next epoch<br><small>decay α, reshuffle samples</small></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box flow-final" data-flow="final">Final classification<br><small>label new points by nearest prototype</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== TAB 4: VIVA ====================== -->
+<section class="tab-panel" data-panel="viva">
+  <div class="panel prose viva">
+    <h2 class="panel-title">Viva questions <span class="panel-note">15 likely questions, with answers</span></h2>
+
+    <details open>
+      <summary>1. What is Learning Vector Quantization?</summary>
+      <p>A supervised classifier that represents each class with one or more prototype vectors. A new
+      sample gets the label of the nearest prototype. Training adjusts where the prototypes sit so that
+      this rule agrees with the training labels.</p>
+    </details>
+
+    <details>
+      <summary>2. Is LVQ supervised or unsupervised? Why?</summary>
+      <p>Supervised. Every training sample carries a label, and that label decides whether the winning
+      prototype moves toward the sample or away from it. With no labels there is no direction to move in.</p>
+    </details>
+
+    <details>
+      <summary>3. What is a prototype or reference vector?</summary>
+      <p>A point in the feature space with a fixed class label. Training moves it around; its label never
+      changes.</p>
+    </details>
+
+    <details>
+      <summary>4. How is the winning prototype selected?</summary>
+      <p>Compute the distance from the input to every prototype and take the smallest:
+      <code>winner = argmin<sub>i</sub> d(x, w<sub>i</sub>)</code>. That prototype is the Best Matching Unit.</p>
+    </details>
+
+    <details>
+      <summary>5. Which distance metric is used? Could you use another?</summary>
+      <p>Euclidean, because it matches what you see on a 2D plot. Manhattan, Minkowski or weighted
+      distances would also work. The choice matters, since the metric decides the shape of the decision
+      regions.</p>
+    </details>
+
+    <details>
+      <summary>6. What happens when the winner has the correct class?</summary>
+      <p>Move it toward the sample: <code>w = w + α(x − w)</code>. The prototype already represents that
+      area, so this makes it a better representative.</p>
+    </details>
+
+    <details>
+      <summary>7. What happens when the winner has the wrong class?</summary>
+      <p>Move it away: <code>w = w − α(x − w)</code>. It was intruding into another class's region, so
+      pushing it back lets the correct class claim that area and the boundary shifts.</p>
+    </details>
+
+    <details>
+      <summary>8. What is the role of the learning rate?</summary>
+      <p>α is the step size. It decides what fraction of the gap between the prototype and the sample is
+      covered by a single update, so it controls how much one sample can influence the model.</p>
+    </details>
+
+    <details>
+      <summary>9. What if the learning rate is too high or too low?</summary>
+      <p>Too high and the prototypes overshoot and keep oscillating near the boundary, and a single noisy
+      sample can throw them off. Too low and training is slow, so they may never reach useful positions in
+      the number of epochs you have. Decaying α is the usual compromise.</p>
+    </details>
+
+    <details>
+      <summary>10. What is an epoch, and why train for several?</summary>
+      <p>One epoch is one full pass over the training set. Each update only uses a single sample, so
+      several passes are normally needed before the positions stabilise.</p>
+    </details>
+
+    <details>
+      <summary>11. What is the difference between LVQ and K-means?</summary>
+      <p>K-means is unsupervised. It has no labels and always moves the winning centroid toward the point,
+      aiming to reduce the variance inside each cluster. LVQ has labels, and moves the winner toward or
+      away depending on whether the labels match. K-means finds clusters; LVQ builds a decision boundary.</p>
+    </details>
+
+    <details>
+      <summary>12. How does LVQ differ from k-Nearest Neighbours?</summary>
+      <p>k-NN stores the whole training set and compares a new point against all of it. LVQ compresses it
+      into a few prototypes, so prediction is much faster and needs far less memory. The trade-off is that
+      some detail is lost.</p>
+    </details>
+
+    <details>
+      <summary>13. How many prototypes per class should be used?</summary>
+      <p>It depends on the shape of the class. One is enough for a single compact cluster. Curved or split
+      regions need several, because each prototype only owns a straight-edged region. The concentric-rings
+      dataset in this app shows that clearly: two prototypes give a poor boundary, eight do much better.</p>
+    </details>
+
+    <details>
+      <summary>14. What are the advantages and limitations of LVQ?</summary>
+      <p>Advantages: small and fast, easy to explain, handles several classes without any change, and the
+      training rule is simple to implement.</p>
+      <p>Limitations: sensitive to the starting positions and to how many prototypes you pick, needs
+      features on similar scales, offers no guarantee of an optimal boundary, and struggles when classes
+      overlap heavily.</p>
+    </details>
+
+    <details>
+      <summary>15. How do you know your code is really LVQ and not something else?</summary>
+      <p>The algorithm sits on its own in <code>js/lvq.js</code>: distance, winner selection, and one
+      update function whose sign comes from the label comparison. Nothing in that file draws anything.
+      The arrows on the plot are drawn from the before and after coordinates recorded during the real
+      update, so nothing is animated just for show.</p>
+    </details>
+  </div>
+</section>
+
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<!-- Loaded as classic scripts (not ES modules) so the project works when
+     index.html is opened directly from disk, with no server. -->
+<script src="js/dataset.js"></script>
+<script src="js/lvq.js"></script>
+<script src="js/animation.js"></script>
+<script src="js/visualization.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/metrics.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
