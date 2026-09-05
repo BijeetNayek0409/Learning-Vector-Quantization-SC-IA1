@@ -13,6 +13,16 @@ KJ Somaiya School of Engineering.
 | Vini Pandhare | 16014224085 |
 
 ---
+## Live Demo
+
+Open either link in a browser — nothing to download or install.
+
+| Hosted on | Link |
+| --- | --- |
+| **Vercel** | https://lvq-sc-ia1.vercel.app |
+| **GitHub Pages** | https://bijeetnayek0409.github.io/Learning-Vector-Quantization-SC-IA1/ |
+
+Both links open the same project.
 
 ## Demo Video
 
